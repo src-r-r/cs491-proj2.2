@@ -2,17 +2,39 @@
 
 import pcapy
 import getopt, sys
+from dpkt import http
+from dpkt import pcap
+from dpkt import ip
+import proto_dict
 
+"""
 def generate_ip_list(pcap_src):
   reader = pcapy.open_offline(pcap_src)
-  print "Got a reader: ", reader
-  reader.setfilter("smtp.rsp || http.server || tcp.analysis.ack_rtt || dns.resp.addr || arp.opcode==reply")
+  # print "Got a reader: ", reader
+  # myfilter = "smtp.rsp || http.server || tcp.analysis.ack_rtt || dns.resp.addr || arp.opcode==reply"
+  myfilter = 'tcp'
+  reader.setfilter(myfilter)
+  list_values = generate_list(reader)
+  for item in list_values:
+    print item[0]
+    """
+
+def generate_ip_list(pcap_src):
+  import dpkt
+  f = open(pcap_src)
+  pcap = dpkt.pcap.Reader(f)
+  for ts, buf in pcap:
+    eth = dpkt.ethernet.Ethernet(buf)
+    t = proto_dict.get_proto_name(eth.get_type())
+    print "Type is", t
+  
+def generate_list(reader):
+  list_values = []
   while True:
     (header, value) = reader.next()
-    if value == None:
-      pass
-    list_values.extend((head, value))
-  print "The list contains" len(list_values) "items"
+    if (header == None):
+      return list_values
+    list_values.extend((header,value))
 
 def throw_argv_error():
   print """
