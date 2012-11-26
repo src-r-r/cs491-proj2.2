@@ -1,0 +1,12 @@
+#!/bin/bash
+if [ $1 == "1" ]
+then
+	./port_scan.py ../tcpdump/98-10minutes.tcpdump
+elif [ $1 == "2" ]
+then
+	./port_scan.py ../tcpdump/98-4hours.tcpdump
+
+else
+	./port_scan.py ../tcpdump/98-10minutes.tcpdump
+	./port_scan.py ../tcpdump/98-4hours.tcpdump
+fi

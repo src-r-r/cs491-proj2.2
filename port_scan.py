@@ -6,6 +6,7 @@ from dpkt import http
 from dpkt import pcap
 from dpkt import ip
 import proto_dict
+import socket
 
 """
 def generate_ip_list(pcap_src):
@@ -23,6 +24,7 @@ def generate_ip_list(pcap_src):
   import dpkt
   f = open(pcap_src)
   pcap = dpkt.pcap.Reader(f)
+  server_list = []
   ##
   # Iteratively go through the packets in the dumpfile.
   # We'll need to check each packet to check if it's
@@ -46,35 +48,35 @@ def generate_ip_list(pcap_src):
         if (my_ip.p == dpkt.ip.IP_PROTO_TCP):
             #print "We're using TCP"    #DEBUG
             my_tcp = my_ip.data
-            pass
+            
+            ## Code recommended from dpkt docs.
+            fin_flag = ( my_tcp.flags & dpkt.tcp.TH_FIN ) != 0
+            syn_flag = ( my_tcp.flags & dpkt.tcp.TH_SYN ) != 0
+            rst_flag = ( my_tcp.flags & dpkt.tcp.TH_RST ) != 0
+            psh_flag = ( my_tcp.flags & dpkt.tcp.TH_PUSH) != 0
+            ack_flag = ( my_tcp.flags & dpkt.tcp.TH_ACK ) != 0
+            urg_flag = ( my_tcp.flags & dpkt.tcp.TH_URG ) != 0
+            ece_flag = ( my_tcp.flags & dpkt.tcp.TH_ECE ) != 0
+            cwr_flag = ( my_tcp.flags & dpkt.tcp.TH_CWR ) != 0
+            
+            if (syn_flag or rst_flag or ack_flag):
+                ip_str = socket.inet_ntoa(my_ip.dst)
+                if ip_str not in server_list:
+                    server_list.append(ip_str)
         elif (my_ip.p == dpkt.ip.IP_PROTO_UDP):
             #print "We're using UDP"    #DEBUG
             my_udp = my_ip.data
-            pass
         elif (my_ip.p == dpkt.ip.IP_PROTO_SCTP):
             #print "We're using SCTP"    #DEBUG
             my_sctp = my_ip.data
-            pass
         elif (my_ip.p == dpkt.ip.IP_PROTO_ICMP):
             #print "We're using ICMP"    #DEBUG
             my_icmp = my_ip.data
-            pass
         elif (my_ip.p == dpkt.ip.IP_PROTO_IGP):
             #print "We're using IGP"    #DEBUG
             my_igp = my_ip.data
-            pass
-        else:
-            print "I don't know what the heck we're using! ", my_ip.p
-    elif (eth.type == dpkt.ethernet.ETH_TYPE_PPP):
-        # print ("We're using PPP. Ignore...") #DEBUG
-        pass
-    elif (eth.type == dpkt.ethernet.ETH_TYPE_ARP):
-        #print ("We're using ARP. Ignore...") #DEBUG
-        pass
+  return server_list
         
-    ## We can also ignore loop-backs and LLC since those are internal
-    ## protocols.
-
 def throw_argv_error():
   print """
     Usage:
@@ -87,7 +89,8 @@ def main():
     throw_argv_error()
     return
   filename = sys.argv[1]
-  generate_ip_list(filename)
+  list = generate_ip_list(filename)
+  print "%d IP addresses acting as servers:\n%s" % (len(list), list)
 
 if __name__=='__main__':
     main()
