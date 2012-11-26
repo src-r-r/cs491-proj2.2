@@ -7,6 +7,7 @@ from dpkt import pcap
 from dpkt import ip
 import proto_dict
 import socket
+import random
 
 """
 def generate_ip_list(pcap_src):
@@ -26,18 +27,23 @@ def generate_ip_list(pcap_src):
   pcap = dpkt.pcap.Reader(f)
   server_list = []
   server_dict = {}
-  ##
-  # Iteratively go through the packets in the dumpfile.
-  # We'll need to check each packet to check if it's
-  # IPv6 or IPv4...most (okay, all) for this project
-  # are IPv4.
-  
-  ##
-  # NOTE: The only protocols we care about are:
-  #    * IPv4 and IPv6 (we won't check headers, so we'll
-  #      just use the IP protocol)
-  #    * DNS
-  #    * ICMP
+  """
+  Generate the IP list for the PCAP file.  In addition,
+  get the list of opened ports and the number of bytes sent
+  for each connection (these will be added up)
+  The data structure of the return will look like the following:
+  dictionary(
+      "source.ip.address.1" => dict(
+          "dest.ip.address.1" => bytes_served_1,
+          "dest.ip.address.2" => bytes_served_2,
+          ...,
+          "dest.ip.address.n" => bytes_served_n
+      ),
+      source.ip.address.2" => dict( ... ),
+      ...,
+      source.ip.address.n" => dict( ... )
+  )
+  """
   for ts, buf in pcap:
     ## Get the transport layer
     eth = dpkt.ethernet.Ethernet(buf)
@@ -61,14 +67,13 @@ def generate_ip_list(pcap_src):
             cwr_flag = ( my_tcp.flags & dpkt.tcp.TH_CWR ) != 0
             
             if (syn_flag or rst_flag or ack_flag):
-                
-                # Get the IP address for the list.
-                ip_str = socket.inet_ntoa(my_ip.dst)
-                if ip_str not in server_dict.keys():
-                    server_dict[ip_str] = 0
-                    
-                # Get the number of bytes sent.
-                server_dict[ip_str] += len(my_ip.data)
+                src_str = socket.inet_ntoa(my_ip.src)
+                dst_str = socket.inet_ntoa(my_ip.dst)
+                if src_str not in server_dict:
+                    server_dict[src_str] = {}
+                if dst_str not in server_dict[src_str]:
+                   server_dict[src_str][dst_str] = 0 
+                server_dict[src_str][dst_str] += (len(my_ip.data))
                 
         elif (my_ip.p == dpkt.ip.IP_PROTO_UDP):
             #print "We're using UDP"    #DEBUG
@@ -96,10 +101,21 @@ def main():
     throw_argv_error()
     return
   filename = sys.argv[1]
-  list = generate_ip_list(filename)
-  print "\n%d IP addresses acting as servers:\n%s\n" % (len(list), list.keys())
-  for l in list.keys():
-      print "%s sent %d bytes" % (l, list[l])
+  dict = generate_ip_list(filename)
+  print "There are", len(dict), "servers:\n", dict.keys()
+  for k1 in dict.keys():
+      size = 0
+      l = dict[k1]
+      for item in l.keys():
+          size += l[item]   # Add the bytes to the size.
+      if len(dict[k1]) == 1:
+        print k1, "has", len(dict[k1]), "connection and sent", size, "bytes"
+      else:
+        print k1, "has", len(dict[k1]), "connections and sent", size, "bytes"
+        
+  
+  ports = range(0, 1023)
+  random.shuffle(ports)
 
 if __name__=='__main__':
     main()
