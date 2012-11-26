@@ -25,6 +25,7 @@ def generate_ip_list(pcap_src):
   f = open(pcap_src)
   pcap = dpkt.pcap.Reader(f)
   server_list = []
+  server_dict = {}
   ##
   # Iteratively go through the packets in the dumpfile.
   # We'll need to check each packet to check if it's
@@ -60,9 +61,15 @@ def generate_ip_list(pcap_src):
             cwr_flag = ( my_tcp.flags & dpkt.tcp.TH_CWR ) != 0
             
             if (syn_flag or rst_flag or ack_flag):
+                
+                # Get the IP address for the list.
                 ip_str = socket.inet_ntoa(my_ip.dst)
-                if ip_str not in server_list:
-                    server_list.append(ip_str)
+                if ip_str not in server_dict.keys():
+                    server_dict[ip_str] = 0
+                    
+                # Get the number of bytes sent.
+                server_dict[ip_str] += len(my_ip.data)
+                
         elif (my_ip.p == dpkt.ip.IP_PROTO_UDP):
             #print "We're using UDP"    #DEBUG
             my_udp = my_ip.data
@@ -75,7 +82,7 @@ def generate_ip_list(pcap_src):
         elif (my_ip.p == dpkt.ip.IP_PROTO_IGP):
             #print "We're using IGP"    #DEBUG
             my_igp = my_ip.data
-  return server_list
+  return server_dict
         
 def throw_argv_error():
   print """
@@ -90,7 +97,9 @@ def main():
     return
   filename = sys.argv[1]
   list = generate_ip_list(filename)
-  print "%d IP addresses acting as servers:\n%s" % (len(list), list)
+  print "\n%d IP addresses acting as servers:\n%s\n" % (len(list), list.keys())
+  for l in list.keys():
+      print "%s sent %d bytes" % (l, list[l])
 
 if __name__=='__main__':
     main()
