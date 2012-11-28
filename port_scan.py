@@ -8,6 +8,7 @@ from dpkt import ip
 import proto_dict
 import socket
 import random
+import nmap
 
 """
 def generate_ip_list(pcap_src):
@@ -66,7 +67,11 @@ def generate_ip_list(pcap_src):
             ece_flag = ( my_tcp.flags & dpkt.tcp.TH_ECE ) != 0
             cwr_flag = ( my_tcp.flags & dpkt.tcp.TH_CWR ) != 0
             
-            if (syn_flag or rst_flag or ack_flag):
+            ## combined flags (for identifying server/attack)
+            synack = (syn_flag & ack_flag) != 0
+            
+            
+            if (synack):
                 src_str = socket.inet_ntoa(my_ip.src)
                 dst_str = socket.inet_ntoa(my_ip.dst)
                 if src_str not in server_dict:
@@ -116,6 +121,29 @@ def main():
   
   ports = range(0, 1023)
   random.shuffle(ports)
-
+  #print "The ports are:", ports
+  port_scanner = nmap.PortScanner()
+  ## Concatenate the IP addresses into a comma-separated list.
+  """
+  host_string = ''
+  for i in dict.keys():
+      host_string += str(i)
+      if i != dict.keys()[len(dict.keys())-1]:    ## If we're not at the end of the list.
+          host_string += ","                      ## add a comma.
+ """     
+  ## Concatenate the ports into a comma separated list.
+  port_string = ''
+  for i in ports:
+      port_string += str(i)
+      if i != ports[len(ports)-1]:
+          port_string += ","
+  #print "Hosts: ", host_string
+  #print "Ports: ", port_string
+  arguments = '--system-dns'
+  print "Doing nmap scan..."
+  for host in dict.keys():
+      print "==> Scanning host", host
+      port_scanner.scan(host, '0-1023', arguments)
+  
 if __name__=='__main__':
     main()
